@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FlashDeck">
+<meta name="theme-color" content="#7c6fff">
+<meta name="mobile-web-app-capable" content="yes">
+<title>FlashDeck</title>
+<style>
+:root {
+  --bg: #0f0f14;
+  --surf: #1c1c28;
+  --surf2: #26263a;
+  --surf3: #303048;
+  --border: #33334a;
+  --txt: #eeeef8;
+  --txt2: #8888aa;
+  --txt3: #5555778;
+  --accent: #7c6fff;
+  --accent-dim: #3d3580;
+  --again: #ff4757;
+  --hard: #ffa502;
+  --good: #2ed573;
+  --easy: #1e90ff;
+  --r: 16px;
+  --nav: 68px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--txt);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+#app { height: 100%; position: relative; }
+
+/* ── NAV ── */
+.nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: var(--nav);
+  background: var(--surf);
+  border-top: 1px solid var(--border);
+  display: flex;
+  z-index: 300;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px;
+  border: none; background: none;
+  color: var(--txt2); font-size: 10px; font-weight: 600;
+  cursor: pointer; letter-spacing: .4px;
+  transition: color .2s;
+  padding-top: 4px;
+}
+.nav-btn.active { color: var(--accent); }
+.nav-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ── SCREENS ── */
+.screen {
+  display: none; position: absolute;
+  inset: 0; bottom: var(--nav);
+  overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+.screen.active { display: block; }
+
+/* ── SHARED ── */
+.page-head {
+  padding: 20px 20px 10px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; background: var(--bg); z-index: 10;
+}
+.page-head h1 { font-size: 26px; font-weight: 700; letter-spacing: -.5px; }
+.page-head h2 { font-size: 20px; font-weight: 700; }
+.icon-btn {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--surf2); border: 1px solid var(--border);
+  color: var(--txt); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+}
+.icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.empty {
+  text-align: center; padding: 60px 32px;
+  color: var(--txt2); font-size: 15px; line-height: 1.6;
+}
+.empty .emoji { font-size: 48px; display: block; margin-bottom: 12px; }
+
+/* ── DECKS ── */
+#screen-decks { background: var(--bg); }
+.deck-list { padding: 4px 16px 16px; }
+.deck-item {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px 18px;
+  margin-bottom: 10px;
+  display: flex; align-items: center;
+  cursor: pointer;
+  transition: background .15s;
+  gap: 12px;
+}
+.deck-item:active { background: var(--surf2); }
+.deck-info { flex: 1; min-width: 0; }
+.deck-name { font-size: 16px; font-weight: 600; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.deck-counts { display: flex; gap: 10px; font-size: 13px; font-weight: 600; }
+.c-new { color: var(--easy); }
+.c-lrn { color: var(--hard); }
+.c-due { color: var(--good); }
+.deck-arrow { color: var(--txt2); }
+.deck-arrow svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.fab {
+  position: fixed; bottom: calc(var(--nav) + 16px); right: 16px;
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--accent); border: none; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: 0 4px 20px rgba(124,111,255,.4);
+  z-index: 50; font-size: 26px; font-weight: 300;
+  transition: transform .15s;
+}
+.fab:active { transform: scale(.93); }
+
+/* ── STUDY SCREEN ── */
+#screen-study { background: var(--bg); display: none; flex-direction: column; }
+#screen-study.active { display: flex; bottom: 0; z-index: 400; }
+
+.study-bar {
+  padding: 12px 16px 8px;
+  display: flex; align-items: center; gap: 12px;
+  flex-shrink: 0;
+}
+.study-back {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--surf2); border: none; color: var(--txt);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+}
+.study-back svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.progress-wrap { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .4s ease; }
+.study-num { font-size: 12px; font-weight: 700; color: var(--txt2); min-width: 48px; text-align: right; }
+
+.card-stage {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 12px 16px;
+  min-height: 0;
+}
+.card-wrap {
+  width: 100%; max-width: 520px;
+  transition: transform .15s ease, opacity .15s ease;
+}
+.card-wrap.flipping {
+  transform: scale(0.92);
+  opacity: 0;
+}
+.card-face {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 32px 28px;
+  min-height: 240px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 8px 40px rgba(0,0,0,.4);
+  user-select: none;
+}
+.card-face.back {
+  display: none;
+  cursor: default;
+}
+.card-face.back.visible {
+  display: flex;
+}
+.card-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 1.2px;
+  color: var(--accent); text-transform: uppercase; margin-bottom: 16px;
+}
+.card-text {
+  font-size: 17px; line-height: 1.6; color: var(--txt);
+  font-weight: 500;
+}
+.card-text.front { font-size: 19px; font-weight: 600; }
+.tap-hint {
+  margin-top: 20px; font-size: 12px; color: var(--txt2);
+  display: flex; align-items: center; gap: 5px;
+}
+.tap-hint svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.rating-area {
+  flex-shrink: 0; padding: 12px 16px;
+  padding-bottom: max(20px, env(safe-area-inset-bottom, 20px));
+  display: none; flex-direction: column; gap: 10px;
+}
+.rating-area.visible { display: flex; }
+.rating-row { display: flex; gap: 8px; }
+.rating-btn {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 3px;
+  padding: 12px 6px;
+  border-radius: 14px; border: 1.5px solid;
+  background: none; cursor: pointer;
+  transition: transform .1s, opacity .1s;
+  color: var(--txt);
+}
+.rating-btn:active { transform: scale(.95); opacity: .85; }
+.r-again { border-color: var(--again); }
+.r-hard  { border-color: var(--hard); }
+.r-good  { border-color: var(--good); }
+.r-easy  { border-color: var(--easy); }
+.r-again:hover { background: rgba(255,71,87,.12); }
+.r-hard:hover  { background: rgba(255,165,2,.12); }
+.r-good:hover  { background: rgba(46,213,115,.12); }
+.r-easy:hover  { background: rgba(30,144,255,.12); }
+.rating-label { font-size: 14px; font-weight: 700; }
+.rating-interval { font-size: 11px; font-weight: 600; opacity: .7; }
+.r-again .rating-label { color: var(--again); }
+.r-hard  .rating-label { color: var(--hard); }
+.r-good  .rating-label { color: var(--good); }
+.r-easy  .rating-label { color: var(--easy); }
+
+.study-done {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 40px 32px; text-align: center; gap: 12px;
+}
+.done-emoji { font-size: 64px; }
+.done-title { font-size: 24px; font-weight: 700; }
+.done-sub { font-size: 15px; color: var(--txt2); line-height: 1.5; }
+.done-btn {
+  margin-top: 16px; padding: 14px 36px;
+  background: var(--accent); border: none; border-radius: 50px;
+  color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
+}
+
+/* ── BROWSE ── */
+#screen-browse { background: var(--bg); }
+.search-wrap { padding: 8px 16px 12px; }
+.search-input {
+  width: 100%; padding: 10px 14px;
+  background: var(--surf); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--txt); font-size: 15px;
+  outline: none;
+}
+.search-input::placeholder { color: var(--txt2); }
+.search-input:focus { border-color: var(--accent); }
+
+.card-list { padding: 0 16px 16px; }
+.card-row {
+  background: var(--surf); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 16px;
+  margin-bottom: 8px; cursor: pointer;
+  transition: background .15s;
+}
+.card-row:active { background: var(--surf2); }
+.card-row-front { font-size: 14px; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-row-back { font-size: 13px; color: var(--txt2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-row-meta { display: flex; gap: 8px; margin-top: 6px; align-items: center; }
+.state-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: .5px;
+  padding: 2px 7px; border-radius: 20px; text-transform: uppercase;
+}
+.state-new      { background: rgba(30,144,255,.2);  color: var(--easy); }
+.state-learning { background: rgba(255,165,2,.2);   color: var(--hard); }
+.state-review   { background: rgba(46,213,115,.2);  color: var(--good); }
+.state-relearning { background: rgba(255,71,87,.2); color: var(--again); }
+.deck-badge {
+  font-size: 11px; color: var(--txt2); font-weight: 500;
+}
+
+/* ── STATS ── */
+#screen-stats { background: var(--bg); }
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 8px 16px 16px; }
+.stat-card {
+  background: var(--surf); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 18px 16px;
+  text-align: center;
+}
+.stat-value { font-size: 30px; font-weight: 800; color: var(--accent); letter-spacing: -1px; }
+.stat-label { font-size: 12px; color: var(--txt2); font-weight: 600; margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
+
+.forecast-title { padding: 8px 16px 6px; font-size: 13px; font-weight: 700; color: var(--txt2); text-transform: uppercase; letter-spacing: .5px; }
+.forecast-bars { padding: 0 16px 16px; display: flex; gap: 6px; align-items: flex-end; height: 100px; }
+.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.bar-fill { width: 100%; border-radius: 4px 4px 0 0; background: var(--accent); opacity: .7; min-height: 4px; transition: height .3s; }
+.bar-label { font-size: 9px; color: var(--txt2); font-weight: 600; }
+
+/* ── MODALS ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.7); z-index: 400;
+  align-items: flex-end; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surf); border-radius: 24px 24px 0 0;
+  padding: 24px 20px 40px;
+  width: 100%; max-width: 600px;
+  max-height: 85vh; overflow-y: auto;
+}
+.modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 18px; }
+.modal-row { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
+.input-group { margin-bottom: 14px; }
+.input-group label { display: block; font-size: 12px; font-weight: 700; color: var(--txt2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+.input-group input, .input-group textarea, .input-group select {
+  width: 100%; padding: 12px 14px;
+  background: var(--surf2); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--txt); font-size: 15px;
+  outline: none; font-family: inherit;
+}
+.input-group textarea { resize: vertical; min-height: 80px; }
+.input-group input:focus, .input-group textarea:focus, .input-group select:focus { border-color: var(--accent); }
+.btn {
+  padding: 12px 24px; border-radius: 50px; border: none;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  transition: opacity .15s;
+}
+.btn:active { opacity: .8; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-ghost   { background: var(--surf2); color: var(--txt); }
+.btn-danger  { background: var(--again); color: #fff; }
+.btn-sm { padding: 8px 18px; font-size: 13px; }
+
+/* Deck action menu */
+.deck-menu { position: absolute; right: 0; top: 100%; background: var(--surf2); border: 1px solid var(--border); border-radius: 12px; padding: 6px; z-index: 100; min-width: 160px; box-shadow: 0 8px 32px rgba(0,0,0,.5); }
+.deck-menu-item { padding: 10px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+.deck-menu-item:hover { background: var(--surf3); }
+.deck-menu-item.danger { color: var(--again); }
+
+/* Import section */
+.import-area { border: 2px dashed var(--border); border-radius: 12px; padding: 24px; text-align: center; cursor: pointer; color: var(--txt2); font-size: 14px; transition: border-color .2s; }
+.import-area:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Animations */
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.card-wrap { animation: slideUp .3s ease; }
+
+/* Done stats */
+.session-stats { display: flex; gap: 20px; justify-content: center; margin-top: 8px; }
+.session-stat { text-align: center; }
+.session-stat .n { font-size: 22px; font-weight: 800; }
+.session-stat .l { font-size: 12px; color: var(--txt2); font-weight: 600; }
+
+@media (min-width: 520px) {
+  .rating-row { max-width: 480px; margin: 0 auto; }
+  .card-stage { padding: 20px 24px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── DECKS SCREEN ── -->
+  <div class="screen active" id="screen-decks">
+    <div class="page-head">
+      <h1>📚 FlashDeck</h1>
+      <div style="display:flex;gap:8px">
+        <button class="icon-btn" onclick="openImportModal()" title="Importér TSV">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+        <button class="icon-btn" onclick="openAddDeckModal()" title="Nyt deck">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="deck-list" id="deck-list"></div>
+    <button class="fab" onclick="openAddCardModal()" title="Tilføj kort">+</button>
+  </div>
+
+  <!-- ── STUDY SCREEN ── -->
+  <div class="screen" id="screen-study">
+    <div class="study-bar">
+      <button class="study-back" onclick="exitStudy()">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="progress-wrap"><div class="progress-fill" id="study-progress" style="width:0%"></div></div>
+      <div class="study-num" id="study-num">0/0</div>
+    </div>
+    <div class="card-stage" id="card-stage">
+      <div class="card-wrap" id="card-wrap">
+        <div class="card-face front" id="card-front" onclick="flipCard()">
+          <div class="card-label">SPØRGSMÅL</div>
+          <div class="card-text front" id="card-front-text"></div>
+          <div class="tap-hint">
+            <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+            Tryk for svar
+          </div>
+        </div>
+        <div class="card-face back" id="card-back">
+          <div class="card-label">SVAR</div>
+          <div class="card-text" id="card-back-text"></div>
+        </div>
+      </div>
+    </div>
+    <div class="rating-area" id="rating-area">
+      <div class="rating-row">
+        <button class="rating-btn r-again" onclick="rate(1)">
+          <span class="rating-label">Igen</span>
+          <span class="rating-interval" id="int-again">1 min</span>
+        </button>
+        <button class="rating-btn r-hard" onclick="rate(2)">
+          <span class="rating-label">Svær</span>
+          <span class="rating-interval" id="int-hard">6 min</span>
+        </button>
+        <button class="rating-btn r-good" onclick="rate(3)">
+          <span class="rating-label">God</span>
+          <span class="rating-interval" id="int-good">10 min</span>
+        </button>
+        <button class="rating-btn r-easy" onclick="rate(4)">
+          <span class="rating-label">Let</span>
+          <span class="rating-interval" id="int-easy">4 d</span>
+        </button>
+      </div>
+    </div>
+    <div class="study-done" id="study-done" style="display:none">
+      <div class="done-emoji">🎉</div>
+      <div class="done-title">Deck gennemgået!</div>
+      <div class="done-sub">Du har gennemgået alle dagens kort.<br>Kom tilbage i morgen for nye gentagelser.</div>
+      <div class="session-stats" id="session-stats"></div>
+      <button class="done-btn" onclick="exitStudy()">Tilbage til decks</button>
+    </div>
+  </div>
+
+  <!-- ── BROWSE SCREEN ── -->
+  <div class="screen" id="screen-browse">
+    <div class="page-head">
+      <h2>Gennemse kort</h2>
+    </div>
+    <div class="search-wrap">
+      <input class="search-input" type="search" placeholder="Søg i kort…" id="search-input" oninput="renderBrowse()">
+    </div>
+    <div class="card-list" id="card-list"></div>
+  </div>
+
+  <!-- ── STATS SCREEN ── -->
+  <div class="screen" id="screen-stats">
+    <div class="page-head"><h2>Statistik</h2></div>
+    <div class="stats-grid" id="stats-grid"></div>
+    <div class="forecast-title">KOMMENDE GENTAGELSER (7 DAGE)</div>
+    <div class="forecast-bars" id="forecast-bars"></div>
+  </div>
+
+  <!-- ── BOTTOM NAV ── -->
+  <nav class="nav">
+    <button class="nav-btn active" data-screen="decks" onclick="showScreen('decks')">
+      <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      DECKS
+    </button>
+    <button class="nav-btn" data-screen="browse" onclick="showScreen('browse')">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      SØG
+    </button>
+    <button class="nav-btn" data-screen="stats" onclick="showScreen('stats')">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      STATS
+    </button>
+  </nav>
+</div>
+
+<!-- ── MODALS ── -->
+
+<!-- Add/Edit Deck -->
+<div class="modal-overlay" id="modal-deck">
+  <div class="modal">
+    <h3 id="deck-modal-title">Nyt deck</h3>
+    <div class="input-group">
+      <label>Navn</label>
+      <input type="text" id="deck-name-input" placeholder="f.eks. Pandora-analyse">
+    </div>
+    <div class="input-group">
+      <label>Nye kort pr. dag</label>
+      <input type="number" id="deck-new-input" value="20" min="0" max="9999">
+    </div>
+    <div class="input-group">
+      <label>Maks. gentagelser pr. dag</label>
+      <input type="number" id="deck-rev-input" value="200" min="0" max="9999">
+    </div>
+    <div class="modal-row">
+      <button class="btn btn-ghost" onclick="closeModal('modal-deck')">Annuller</button>
+      <button class="btn btn-primary" onclick="saveDeck()">Gem</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Card -->
+<div class="modal-overlay" id="modal-card">
+  <div class="modal">
+    <h3 id="card-modal-title">Nyt kort</h3>
+    <div class="input-group">
+      <label>Deck</label>
+      <select id="card-deck-select"></select>
+    </div>
+    <div class="input-group">
+      <label>Spørgsmål (forside)</label>
+      <textarea id="card-front-input" placeholder="Hvad er…"></textarea>
+    </div>
+    <div class="input-group">
+      <label>Svar (bagside)</label>
+      <textarea id="card-back-input" placeholder="Svaret er…"></textarea>
+    </div>
+    <div class="input-group">
+      <label>Tags (kommasepareret)</label>
+      <input type="text" id="card-tags-input" placeholder="strategi, regnskab">
+    </div>
+    <div class="modal-row">
+      <button class="btn btn-danger btn-sm" id="delete-card-btn" style="display:none;margin-right:auto" onclick="deleteCard()">Slet</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-card')">Annuller</button>
+      <button class="btn btn-primary" onclick="saveCard()">Gem</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import TSV -->
+<div class="modal-overlay" id="modal-import">
+  <div class="modal">
+    <h3>Importér TSV-fil</h3>
+    <div class="input-group">
+      <label>Deck at importere til</label>
+      <select id="import-deck-select"></select>
+    </div>
+    <div class="input-group">
+      <label>Format: kolonne 1 = spørgsmål, kolonne 2 = svar<br>(eller: nr. | spørgsmål | svar)</label>
+      <div class="import-area" onclick="document.getElementById('tsv-file').click()" id="import-area">
+        📂 Tryk her for at vælge .tsv eller .txt fil
+        <input type="file" id="tsv-file" accept=".tsv,.txt,.csv" style="display:none" onchange="handleFileImport(event)">
+      </div>
+    </div>
+    <div class="input-group">
+      <label>Eller indsæt TSV direkte</label>
+      <textarea id="tsv-paste" placeholder="Spørgsmål&#9;Svar&#10;Hvad er PESTEL?&#9;Politics, Economics..." style="min-height:100px;font-size:13px"></textarea>
+    </div>
+    <div class="modal-row">
+      <button class="btn btn-ghost" onclick="closeModal('modal-import')">Annuller</button>
+      <button class="btn btn-primary" onclick="doImport()">Importér</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  DATA LAYER
+// ═══════════════════════════════════════════════
+
+const DB_KEY = 'flashdeck_v1';
+
+function loadDB() {
+  try {
+    const raw = localStorage.getItem(DB_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return null;
+}
+
+function saveDB() {
+  localStorage.setItem(DB_KEY, JSON.stringify(db));
+}
+
+function uid() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// ── Default / seed data ──
+const PANDORA_CARDS = [
+["Hvem har skrevet projektet, og hvornår er det afleveret?","Daniel Thor Villumsen (studienummer 202307718), Aarhus BSS, HA – Erhvervsøkonomi. Vejleder: Bent Jesper Christensen. Afleveret 01.05.2026. 99.593 tegn inkl. mellemrum."],
+["Hvad er problemformuleringen?","\"Hvad er værdien af Pandora aktien ud fra en strategisk analyse, regnskabsanalyse og værdiansættelse, og er Pandora aktien attraktiv at investere i på baggrund af, om den er over- eller undervurderet.\""],
+["Hvilken dato fungerer som \"dagsdato\" i opgaven?","17. april 2026. Informationer efter denne dato er ikke medtaget, så analyserne ikke skal laves om ved ny viden inden aflevering 1. maj 2026."],
+["Hvor meget faldt Pandora-aktien i 2025?","Aktien faldt 46,3% i 2025 – fra DKK 1.317,00 ved årets start til DKK 707,60 ved årets slut."],
+["Hvad var Pandoras omsætningsvækst i 2024 og 2025?","12,6% vækst fra 2023 til 2024, men kun 2,7% fra 2024 til 2025."],
+["Hvem var CEO før, og hvem er den nuværende CEO?","Alexander Lacik var CEO fra april 2019 til hans pension. Berta de Pablos-Barbier tiltrådte som CEO og præsident 1. januar 2026."],
+["Hvad lavede Berta de Pablos-Barbier før Pandora?","CEO og præsident for LVMH's champagnebrands Mercier, Dom Pérignon og Moët & Chandon, før hun kom til Pandora Group i 2024."],
+["Hvem er CFO og bestyrelsesformand i Pandora?","CFO og Executive Vice President: Anders Boyer. Bestyrelsesformand: Peter A. Ruzicka."],
+["Hvilken markedskurs havde Pandora-aktien d. 17. april 2026?","DKK 527,20."],
+["Hvad er Pandoras fundamentale aktieværdi ifølge FCF- og RIDO-modellen?","DKK 1.506,5 pr. aktie."],
+["Hvor stor er forskellen på fundamental værdi og markedskurs pr. 17. april 2026?","1.506,5 – 527,2 = DKK 979,3 pr. aktie i undervurdering."],
+["Hvilken videnskabsteoretisk position bygger opgaven på?","Postpositivisme: der findes en objektiv virkelighed (Pandoras sande værdi), men den kan aldrig fuldt kendes; estimater er kvalificerede gæt, og bias kan ikke helt fjernes (Guba, 1990)."],
+["Hvilken tilgang anvendes – induktiv eller deduktiv?","Deduktiv: eksisterende teori anvendes på Pandoras empiri."],
+["Hvilket undersøgelsesdesign anvendes?","Et single-casestudie af Pandora A/S, baseret udelukkende på sekundære data (årsrapporter, markedsdata, artikler)."],
+["Hvad er den sekventielle analysestrategi i opgaven?","Strategi → regnskabsanalyse → budgettering → WACC → værdiansættelse. Hver fase bygger oven på den foregående."],
+["Hvilke strategiske modeller anvendes i opgaven?","PESTEL, Porter's Five Forces, BCG, Porters generiske konkurrencestrategier, Ansoffs vækststrategier, VRIO og SWOT."],
+["Hvilke regnskabs-/værdiansættelsesmodeller anvendes?","Reformulering af resultatopgørelse og balance, rentabilitetsanalyse, budgettering, WACC, FCF-modellen og RIDO-modellen (EVA)."],
+["Hvad står PESTEL for?","Politics, Economics, Social, Technology, Ecological, Legal – en makroanalyse af eksterne forhold virksomheden ikke selv kan påvirke (Whittington et al., 2021, s. 23-30)."],
+["Hvilke fem kræfter indgår i Porter's Five Forces?","1) Rivalisering mellem eksisterende udbydere, 2) trussel fra nye udbydere, 3) trussel fra substituerende produkter, 4) truslen/forhandlingsstyrken fra købere, 5) truslen/forhandlingsstyrken fra leverandører."],
+["Hvilke fire kategorier inddeler BCG-matricen SBU'er i?","Stjerner (høj vækst, høj markedsandel), malkekøer (lav vækst, høj markedsandel), spørgsmålstegn (høj vækst, lav markedsandel) og hunde (lav vækst, lav markedsandel)."],
+["Hvilke tre/fire generiske konkurrencestrategier opstiller Porter?","Omkostningsleder (lav pris, bredt marked), differentiering (unikt produkt, bredt marked) samt to fokusstrategier: omkostningsfokus (lav pris, niche) og differentieringsfokus (unikt produkt, niche)."],
+["Hvilke fire vækstretninger findes i Ansoffs matrix?","Markedspenetration (eksisterende produkt + eksisterende marked), markedsudvikling (eksisterende produkt + nyt marked), produktudvikling (nyt produkt + eksisterende marked) og diversifikation (nyt produkt + nyt marked)."],
+["Hvad står VRIO for?","Value (værdifuld), Rarity (sjælden), Inimitability (ikke-imiterbar) og Organisational support (organisatorisk støtte)."],
+["Hvad står SWOT for, og hvilke er interne/eksterne?","Strengths og Weaknesses = interne forhold. Opportunities og Threats = eksterne forhold."],
+["Hvad er formålet med reformulering af resultatopgørelse og balance?","At opdele virksomhedens drifts- og finansieringsaktiviteter, så regnskabsanalyse, budgettering og værdiansættelse kan udføres (Petersen & Plenborg, 2012)."],
+["Hvilke poster dekomponeres i rentabilitetsanalysen?","ROIC nedbrydes i OG og AOH; OG og 1/AOH dekomponeres yderligere; ROE dekomponeres i ROIC, FGEAR og SPREAD."],
+["Hvad bruges WACC til?","Som diskonteringsrente i FCF- og RIDO-modellerne; den bygger på ejerafkastkrav, egenkapitalandel, gældsandel og lånerente efter skat."],
+["Hvad er FCF-modellen kort fortalt?","Discounted Cash Flow-model, der diskonterer fremtidige frie pengestrømme (NOPAT – ændring i investeret kapital) med WACC for at finde nutidsværdi (Petersen & Plenborg, 2012, s. 216-217)."],
+["Hvad er RIDO-modellen kort fortalt?","EVA-baseret model, der diskonterer fremtidige residualoverskud (NOPAT – WACC × IK primo) med WACC for at finde nutidsværdi (Petersen & Plenborg, 2012, s. 220-221)."],
+["Hvilke to grundbøger er rapportens primære teoretiske kilder?","Petersen & Plenborg (2012) \"Financial Statement Analysis\" og Whittington et al. (2021) \"Fundamentals of Strategy\" (5. udg.)."],
+["Hvilken kilde anvendes som primær for BCG-modellen?","Kotler et al. (2020) \"Principles of Marketing\" (8. europæiske udgave), suppleret af Whittington et al. (2021)."],
+["Hvilken kilde anvendes til WACC-teorien?","Schøler (2016): \"Undervisningsnotat on private equity valuation\", Institut for Økonomi."],
+["Hvornår blev Pandora stiftet, og af hvem?","I 1982 i en lille smykkeforretning i København af ægteparret Per og Winnie Enevoldsen."],
+["Hvornår introducerede Pandora charm-armbåndet?","I år 2000 på det danske marked – det blev en kæmpe succes og drev international ekspansion."],
+["I hvilke år gik Pandora ind på USA, Tyskland og Australien?","USA i 2003; Tyskland og Australien i 2004."],
+["Hvornår åbnede Pandora sin første store fabrik, og hvor?","I 2005 i Gemopolis, Thailand. Senere fabrikker i Lamphun (2017) og Gemopolis (2018)."],
+["Hvornår blev Pandora opkøbt af Axcel, og hvor stor en andel?","I 2008 opkøbte den danske private equity-virksomhed Axcel 60% af Pandora."],
+["Hvornår blev Pandora børsnoteret?","5. oktober 2010 på NASDAQ OMX Copenhagen, handelssymbol PNDORA."],
+["Hvad skete der med Pandora-aktien 2. august 2011?","Pandora nedjusterede forventet omsætningsvækst for 2011 fra 30% til 0%, og aktien faldt 65% på én dag."],
+["Hvor mange salgssteder og konceptbutikker har Pandora i dag?","Mere end 6.700 salgssteder og 2.600 konceptbutikker i over 100 lande."],
+["Hvor stor en del af omsætningen kommer fra \"kerneprodukter\" i 2025?","74% – heraf udgør Moments (charms og carriers) ca. 81,7% (svarende til ca. 60% af samlet omsætning)."],
+["Hvor stor en del af omsætningen kommer fra \"Fuel with more\"?","26%. Indeholder Modern Classics og Pandora Lab-Grown Diamonds (fx Timeless, Signature, Essence)."],
+["Hvor stor en andel guld og sølv er genbrugt hos Pandora?","100% af guld og sølv er genbrugt – ingen \"nyt\" metal direkte fra miner. Pandora bruger også 100% vedvarende energi i produktionen."],
+["Hvor er Pandora placeret på TIME's bæredygtighedsliste?","Højest placerede danske virksomhed på TIME's liste over verdens mest bæredygtige virksomheder og nr. 3 i sin industri (TIME, 2025)."],
+["Hvem er Pandoras top 3 aktionærer og deres ejerandel?","Parvus Asset Management 13,4%, BlackRock 9,82% og Vanguard 4,74% – tilsammen ca. 28%."],
+["Hvordan fordeles Pandoras ejerskab på shareholder-typer?","Institutioner ca. 44,5%, almen offentlighed 41,5%, hedge fonde 13,4%, individuelle insiders 0,6%."],
+["Hvor mange aktier er der i Pandora, og hvor mange stemmer pr. aktie?","75.000.000 aktier, 1 stemme pr. aktie."],
+["Hvor stammer den største del af Pandoras omsætning fra geografisk?","USA 32%, UK 11,4%, Italien 7,1%, Tyskland 6,8%, Frankrig 3,7%, Australien 3,4%, Kina kun 0,9%."],
+["Hvordan fordeles omsætningen på regioner?","EMEA 49,5%, Nordamerika 36,3%, Latinamerika 6,5%, Asien og Stillehavet 7,7%."],
+["Hvor stor en samlet markedsandel har de 10 største smykkevirksomheder i verden?","17,6% – branchen er meget fragmenteret."],
+["Hvem er Pandoras to største konkurrenter, og hvad er deres markedsandele?","Richemont (Cartier, Van Cleef) 3,6% og LVMH (Bulgari, Tiffany) 2,8%. Pandora har 1,5% og er nr. 6 i verden."],
+["Hvilke nationale smykkebrands fylder også i top 10 globalt?","Lao Feng Xiang, Titan, Mokingran og Youyuan – kinesiske og indiske mærker, primært nationale markeder."],
+["Hvilken politisk hændelse i 2025 illustrerede ustabiliteten i Thailand?","Den 15. juni 2025 lækket telefonsamtale mellem premierminister Paetongtarn og Hun Sen. Paetongtarn blev suspenderet 1. juli 2025 og senere formelt afsat for etikbrud."],
+["Hvem blev valgt til Thailands premierminister 5. september 2025 og igen 8. februar 2026?","Anutin Charnvirakul, som fastholdt magten ved nyvalget 8. februar 2026 trods kun 69/500 pladser."],
+["Hvilken global toldsats hævede Trump senest, og fra hvilket niveau?","Fra 10% til 15% – rammer Pandora direkte ved import fra Thailand til USA og videredistribution."],
+["Hvad var værdien af USA's og Thailands gensidige eksport i 2025?","USA eksporterede for 19,5 mia. USD til Thailand; Thailand eksporterede for 91,3 mia. USD til USA."],
+["Hvorfor åbnede Pandora et distributionscenter i Canada?","For at omgå amerikanske toldsatser ved at sende produkter direkte fra Thailand til Canada. Det canadiske marked omsatte for 1 mia. i 2025 og leveringstiden blev halveret."],
+["Hvor lavt nåede den danske forbrugertillid under energikrisen i 2022?","-37 i oktober 2022, drevet af Ruslands invasion af Ukraine (feb. 2022), energikrise og høj inflation."],
+["Hvad er Responsible Jewellery Council (RJC), og hvornår blev det stiftet?","Etableret i 2005 som standard for smykke- og urebranchen med 6 brede mål omkring lovgivning, leverandørkæde, arbejdsrettigheder, miljø, metaller/sten og ansvarlig mineindvinding."],
+["Hvorfor og hvornår meldte Pandora sig ud af RJC?","30. marts 2022, fordi RJC nægtede at suspendere russiske medlemmer efter invasionen af Ukraine. Pandora suspenderede selv handel med Rusland og Belarus på invasionsdagen."],
+["Hvad er smykkebranchens CAGR fra 2020-2025 og 2025-2030 ifølge Passport?","2020-2025: 6,92%. 2025-2030 (estimat): 5,15% – altså en faldende vækstrate."],
+["Hvad er konklusionen på rivalisering mellem eksisterende udbydere?","Moderat til høj rivalisering: mange små virksomheder, faldende vækst, men lave faste omkostninger, lave udgangsbarrierer og høj differentiering."],
+["Hvad er truslen fra nye udbydere ifølge Five Forces?","Moderat – lave kapitalkrav og lav betydning af stordriftsfordele, men svært at få adgang til den vertikale distributionskæde."],
+["Hvad er truslen fra substituerende produkter?","Moderat – andre former for bærbar luksus (tøj, tasker, sko) er i højere grad komplementære end substituerende."],
+["Hvad er truslen fra købere?","Moderat – lave skifteomkostninger (kun brandloyalitet holder kunder), men lav koncentration af individuelle forbrugere."],
+["Hvad er truslen fra leverandører?","Lav – metaller handles på det åbne marked, mange udbydere, og etablerede virksomheder ejer egen værdikæde."],
+["Hvad er den samlede vurdering af branchen efter Five Forces?","Moderat til lav attraktivitet."],
+["Hvilke produkter klassificeres som STJERNER i BCG-analysen?","Lab-grown diamanter og Collabs (fx Disney, Bridgerton)."],
+["Hvilke produkter klassificeres som SPØRGSMÅLSTEGN i BCG?","Nye kollektioner (Essence, Me, Talisman m.fl.) og smykker til mænd."],
+["Hvilket produkt er Pandoras MALKEKO?","Moments (charms og charms-armbånd) – kerneproduktet med høj markedsandel, men lav vækst."],
+["Hvilke produkter klassificeres som HUNDE?","Gamle kollektioner – falder i efterspørgsel, overskygges af nye kollektioner."],
+["Hvilken generisk konkurrencestrategi følger Pandora?","Differentiering mod et bredt marked – med fokus på brand, design, personalisation og kernemarkeder via \"Phoenix\"-strategien."],
+["Hvad hedder Pandoras overordnede strategi?","\"Phoenix\" – med 4 vækstsøjler: brand, design, personalisation og core markets."],
+["Hvilke to Ansoff-strategier anvender Pandora primært?","Markedspenetration (fokus på USA og Kina, der udgør 50% af verdensmarkedet) og produktudvikling (fx lab-grown diamanter)."],
+["Hvordan vurderes Pandoras produktionskapacitet i Thailand i VRIO?","Værdifuld, men ikke sjælden eller svær at imitere – en konkurrencemæssig paritet. Pandora er organiseret til at udnytte den."],
+["Hvordan vurderes lab-grown diamanter i VRIO?","Værdifulde og relativt sjældne, men imiterbare – temporær konkurrencefordel."],
+["Hvordan vurderes bæredygtighed i VRIO?","Værdifuld og relativt sjælden, men imiterbar – temporær fordel."],
+["Hvordan vurderes Pandoras brand i VRIO?","Værdifuldt, sjældent, ikke-imiterbart og organisatorisk understøttet – Pandoras eneste vedvarende konkurrencefordel."],
+["Hvilke interne styrker fremhæves i SWOT?","Differentiering, vertikal integration, produktudvikling og brand."],
+["Hvilke interne svagheder fremhæves i SWOT?","Svag markedspenetration i USA/Asien og begrænset produktvariation."],
+["Hvilke eksterne muligheder fremhæves i SWOT?","Miljø og klima (PESTEL), lav trussel fra leverandører, vækst i Collabs og Lab-grown diamanter."],
+["Hvilke eksterne trusler fremhæves i SWOT?","Politisk uro i Thailand, Trumps toldsatser, faldende forbrugerforventninger, høj konkurrenceintensitet og afsætning af gamle kollektioner."],
+["Hvilke regnskabsstandarder anvender Pandora?","IFRS som vedtaget af EU, plus krav fra dansk årsregnskabslov. Bruger funktionsopdelt resultatopgørelse."],
+["Hvornår træder IFRS 18 i kraft for Pandora?","Pandora implementerer IFRS 18 fra 1. januar 2027 – standarden blev udstedt april 2024."],
+["Hvornår underskrev Pandoras ledelse årsrapporten for 2025?","4. februar 2026 i København."],
+["Hvad var Pandoras ROIC i 2023, 2024 og 2025?","2023: 33,0%; 2024: 37,6%; 2025: 33,1%."],
+["Hvilke to komponenter dekomponeres ROIC i (DuPont)?","OG (overskudsgrad) og AOH (aktivernes omsætningshastighed)."],
+["Hvad var OG i 2023, 2024 og 2025?","18,0%, 19,8%, 19,4% – samlet stigning på 1,4% point."],
+["Hvad var AOH i 2023, 2024 og 2025?","1,837 → 1,899 → 1,707. Fald i 2025 trak ROIC ned."],
+["Hvad var EBITDA-marginen i 2023, 2024 og 2025?","32,4%, 32,6%, 31,9%."],
+["Hvad var EBIT-marginen i 2023, 2024 og 2025?","25,0%, 25,2%, 23,9%."],
+["Hvad var NOPAT-marginen i 2023, 2024 og 2025?","19,1%, 19,1%, 18,2%."],
+["Hvad var Pandoras ROE i 2023, 2024 og 2025?","82,6% → 99,0% → 106,5% (stigning på 23,9% point over perioden)."],
+["Hvad drev stigningen i ROE primært?","Stigende finansiel gearing (FGEAR fra 1,861 til 2,610) – ikke en forbedring i driften (ROIC kun +0,1% point)."],
+["Hvad var SPREAD i 2023 og 2025?","26,7% i 2023 og 28,1% i 2025 (ROIC – r)."],
+["Hvad var lånerenten r i 2023 og 2025?","6,3% i 2023 og 4,9% i 2025."],
+["Hvor mange historiske, budget- og terminalår indeholder budgetteringen?","3 historiske år (2023-2025), 5 budgetperiode-år (2026-2030) og 2 terminalår (2031-2032)."],
+["Hvor mange value-drivers indgår i budgetteringen?","Otte value-drivers: salgsvækst, EBITDA-margin, afskrivninger/anlægskapital, effektiv skattesats, anlægskapital/salg, arbejdskapital/salg, lånerente i pct. (r) og gældsandel."],
+["Hvilken salgsvækst forventes for Pandora i 2026?","Ca. 0% (Pandora selv estimerer -1% til +2%). Omsætning forventes på 31,6-32,6 mia. kr., gennemsnit 32,5 mia."],
+["Hvilken salgsvækst antages fra 2027 og frem?","Ca. 4% fra 2027-2028, faldende mod ca. 3% i terminalåret – baseret på Passport's brancheforventning på 4-5% mod 2030."],
+["Hvilken EBITDA-margin antages i budgettet for 2026 og 2027?","29,0% i 2026 (svagt år) og 21,0% i 2027 (effekt af stigende råvarer/told/olie). Stiger derefter mod 30%."],
+["Hvilken effektiv skattesats forventes for 2026, og hvorfor?","25% – fordi skatteincitamenter i Thailand udløber, og en engangsfordel mellem danske og australske skattemyndigheder forsvinder. Falder fremadrettet mod 24,5%."],
+["Hvorfor kan Pandora opnå nye skatteincitamenter i Vietnam og Singapore?","Pandora åbner i 2026 en ny fabrik i Vietnam og har etableret asiatisk hovedkvarter i Singapore for at fremme vækst på Japan, Sydkorea og Indien."],
+["Hvad er anlægskapital/salg historisk og fremadrettet?","Historisk ca. 0,55 – falder gradvist med 0,005 for fremtiden for at holde CAPEX i niveau 7-9%."],
+["Hvad er arbejdskapital/salg fremadrettet?","Antages til 0,03 – baseret på 2025-tallet (0,035), men med stor historisk volatilitet."],
+["Hvilken lånerente (r) antages i 2026?","5,6%, beregnet baglæns ud fra Pandoras forventning om netto finansielle omkostninger på 1.000-1.050 mio. før skat. Falder over tid til ca. 3%."],
+["Hvilken gældsandel antages fremadrettet?","Ca. 0,70 (stødt stigende pga. aktietilbagekøbsprogrammet)."],
+["Hvad er den risikofri rente i WACC'en, og hvordan er den fundet?","2,83% – effektiv rente på dansk 10-årig statsobligation (udløb 15.11.2035, kupon 2,25%, pris DKK 95,18 pr. 17.04.2026), beregnet med Excel's YIELD/afkast-funktion."],
+["Hvilket Excel-formelopslag bruges til at finde den risikofrie rente?","=YIELD(17.04.2026; 15.11.2035; 0,02; 95,18; 100; 1) = 2,83%."],
+["Hvordan estimeres markedets risikopræmie (MRP)?","Vægtet snit: 40% × 4,77% (Damodaran USA) + 40% × 4,23% (Damodaran DK) + 20% × 6% (Skat) ≈ 4,8%."],
+["Hvilke tre betaer indgår i WACC-betaen, og hvordan vægtes de?","Regearet branchebeta (50%) = 1,28; CAPM-beta (20%) = 1,10; Common sense-beta (30%) = 1,05. Samlet beta = 1,185."],
+["Hvad er Pandoras regearet beta, og hvordan beregnes den?","1,28: β_asset × (1 + gearing) = 0,95 × (1 + 0,349). Branchen er \"Apparel\" hos Damodaran."],
+["Hvad bygger CAPM-betaen 1,10 på?","Gennemsnit af Yahoo Finance (1,26), Financial Times (0,93) og Investing Pro (1,26) = 1,15. Derefter β_equity = 0,33 + 0,67 × 1,15 = 1,10."],
+["Hvorfor er likviditetspræmien 0%?","Pandoras egenkapitalmarkedsværdi er DKK 39,5 mia. (over 10 mia.) og indgår i C25 – ingen likviditetstillæg ifølge oversigt fra FSR."],
+["Hvad er Pandoras ejerafkastkrav?","8,47% (= 2,83% + 4,80% × 1,185 + 0%)."],
+["Hvad er markedsværdien af Pandoras egenkapital?","DKK 39,540 mia. (75 mio. aktier × DKK 527,20)."],
+["Hvad er Pandoras netto finansielle forpligtelser (NFF)?","DKK 13,783 mia. (rentebærende gæld 15,059 mia. minus finansielle aktiver 1,276 mia.)."],
+["Hvad er markedsværdien af den investerede kapital (EV)?","DKK 53,323 mia. (39,540 + 13,783)."],
+["Hvad er Pandoras egenkapital- og gældsandel?","Egenkapital 74,2% (39,540/53,323) og gæld 25,8% (13,783/53,323)."],
+["Hvilken samlet kreditrating opnår Pandora ifølge spread-analysen?","0,89 – mellem BBB og A (tættere på BBB)."],
+["Hvilke fire nøgletal indgår i spread-vurderingen?","Driftsmæssig risiko (beta asset) = 0,87 (BBB), rentedækning 6,15-6,77 (A), ROIC eks. GW 33,1-37,5% (AAA), egenkapitalandel 17,8-22,5% (B)."],
+["Hvad er Pandoras lånerente før og efter skat i WACC'en?","Før skat: 2,83% + 0,89% = 3,72%. Efter skat (22%): 3,72% × (1-0,22) = 2,90%."],
+["Hvad er Pandoras WACC, og hvordan beregnes den?","7,03% = 0,742 × 8,47% + 0,258 × 2,90%."],
+["Hvilken aktieværdi giver FCF-modellen?","DKK 1.506,5 pr. aktie – samme resultat som RIDO."],
+["Hvad er PV af FCF i budgetperioden og terminalværdien?","PV af FCF i budgetperioden: 22.990 mio. (18,1%). PV af terminalværdi: 103.779 mio. (81,9%). EV = 156.044 → minus NFF (13.783) = ordinær EK 112.985 mio. → /75 mio. aktier = 1.506,5."],
+["Hvad er vægtningen i FCF-modellen mellem budget og terminal?","PV af FCF i budgetperioden 22,99 mia. (ca. 18%); PV af terminalværdi 103,78 mia. (ca. 82%)."],
+["Hvad er PV af RIDO i budgetperioden og terminalværdien?","PV af RIDO i budgetperioden: 18.391 mio. (14,5%). PV af terminalværdi: 89.312 mio. (70,5%). Plus bogført IK primo 19.065 mio. = 126.769 mio. – NFF = 112.985 mio. → 1.506,5/aktie."],
+["Hvorfor giver FCF- og RIDO-modellerne samme resultat?","De er matematisk identiske – to forskellige veje til samme værdiansættelse."],
+["Hvad viser følsomhedsanalysen ved -1% point på både vækstrate og EBITDA-margin?","Aktieværdi falder fra 1.506 til DKK 1.129 (-377)."],
+["Hvad viser følsomhedsanalysen ved +1% point på både vækstrate og EBITDA-margin?","Aktieværdi stiger til DKK 2.137 (+631)."],
+["Hvad er forskellen mellem optimistisk og pessimistisk scenarie (±1% point)?","2.137 – 1.129 = DKK 1.008 forskel."],
+["Hvilken aktieværdi giver scenarieanalysen ved WACC = 8,00% + pessimistisk antagelse?","DKK 910."],
+["Hvilken aktieværdi giver scenarieanalysen ved WACC = 6,00% + optimistisk antagelse?","DKK 3.363."],
+["Hvor stor er forskellen mellem ekstremerne i scenarieanalysen?","3.363 – 910 = DKK 2.453."],
+["Hvad er Pandoras aktieværdi selv i det mest pessimistiske scenarie (WACC 8% + pessimistisk antagelse)?","DKK 910 – stadig højere end markedskursen på DKK 527,20, så aktien er stadig undervurderet."],
+["Hvilken metodisk kritik rejses mod DCF/RIDO-modellerne?","Stor følsomhed over for antagelser om salgsvækst og terminalværdier. Forskellen mellem optimistisk og pessimistisk scenarie er hele 2.453 ved blot ±1% point på to drivers og WACC."],
+["Hvilken kritik rejses mod datagrundlaget?","Kun 3 års regnskab; brancheestimater fra Passport er også estimater; risiko for ekkokammer mellem artikler; risiko for subjektivitet i Pandoras egne meldinger."],
+["Hvilken kritik rejses mod selve analysen?","BCG-inddelingen er skønsmæssig; budgetteringen bygger på et atypisk 2026-år; 3-4% normaliseret vækst kan kun støttes af brancheforventning."],
+["Hvad er konklusionen på Pandoras strategiske situation?","Pandora står strategisk stærkt med brand som vedvarende konkurrencefordel og differentiering som strategi, men er udfordret af eksterne trusler (told, politisk uro, forbrugerforventninger)."],
+["Hvad er konklusionen på Pandoras regnskabsmæssige profil?","Stærk: ROIC 33,1%, EBITDA-margin 31,9%, NOPAT-margin 18,2%, ROE 106,5% (drevet af gearing)."],
+["Hvilke spørgsmål rejses i perspektiveringen?","Kan Pablos-Barbier replikere Laciks turnaround fra 2019? Effekt af Q1 2026 (6. maj)? Kinesisk markedspotentiale, råvarepriser, lab-grown diamanters gennemslag, og AI's begrænsede direkte effekt på smykkebranchen."],
+["Hvilke konkrete investeringer signalerer Pandoras fokus på Asien?","Etablering af asiatisk hovedkvarter i Singapore (nov. 2025) og ny fabrik i Vietnam – den første fabrik uden for Thailand."],
+["Hvad er Pandoras forventede direkte effekt af AI ifølge perspektiveringen?","Begrænset – smykker laves stadig i hånden. AI vil primært bruges til optimering af processer, distribution, administration og salgsoplevelsen."],
+["Hvad er Pandoras placering i prissegmenter?","\"Affordable luxury\" – mellem masseproduktion og luksus. Det begrænser muligheden for at vælte stigende råvarepriser over på forbrugerne."],
+["Hvilke begreber defineres specifikt i opgaven?","Incumbents (eksisterende virksomheder i branchen), BCG (Boston Consulting Group), RJC (Responsible Jewellery Council), NSK (National enhed for Særlig Kriminalitet)."],
+["Hvorfor er Kasi-Jesper-sagen bevidst udeladt af opgaven?","Pandora er ikke dømt og har vundet alle retslige omgange. NSK opgav sagen i oktober 2025. Sagen er stadig formelt åben (Kasi-Jesper forsøger fortsat retssag), men sandsynlighed for tab er lav."],
+["Hvad er Pandoras investerede kapital (NDA) i 2023, 2024 og 2025?","15.320, 16.685 og 19.065 mio. DKK."],
+["Hvad er Pandoras egenkapital i 2023, 2024 og 2025 (bogført)?","5.355, 5.508 og 5.282 mio. DKK."],
+["Hvad er Pandoras nettoomsætning i 2023, 2024 og 2025?","28.136, 31.680 og 32.549 mio. DKK."],
+["Hvilke videnskabsfilosofiske kilder anvendes til metodevalg?","Bergenholtz (2026a, 2026b) for forskningsdesign og teori, samt Guba (1990) for det postpositivistiske paradigme."]
+];
+
+function createSeedDB() {
+  const deckId = uid();
+  const now = Date.now();
+  const notes = [];
+  const cards = [];
+  PANDORA_CARDS.forEach(([front, back]) => {
+    const noteId = uid();
+    notes.push({ id: noteId, deckId, front, back, tags: ['pandora'], created: now });
+    cards.push({
+      id: uid(), noteId, deckId,
+      state: 'new', due: now,
+      interval: 0, easeFactor: 2.5,
+      repetitions: 0, learningStep: 0, lapses: 0,
+      lastReviewed: null
+    });
+  });
+  return {
+    decks: [{ id: deckId, name: 'Pandora-analyse', newPerDay: 20, reviewPerDay: 200 }],
+    notes,
+    cards,
+    reviews: [],
+    dailyNew: {},
+    settings: {}
+  };
+}
+
+let db = loadDB() || createSeedDB();
+let editingDeckId = null;
+let editingNoteId = null;
+
+// ═══════════════════════════════════════════════
+//  SM-2 ALGORITHM
+// ═══════════════════════════════════════════════
+
+const LEARNING_STEPS = [1, 10]; // minutes
+
+function fmtInterval(ms) {
+  const s = ms / 1000, m = s / 60, h = m / 60, d = h / 24;
+  if (m < 1)  return '<1 min';
+  if (m < 60) return Math.round(m) + ' min';
+  if (h < 24) return Math.round(h) + ' t';
+  if (d < 30) return Math.round(d) + ' d';
+  return Math.round(d / 30) + ' mdr';
+}
+
+function previewIntervals(card) {
+  // Returns {again, hard, good, easy} as ms
+  const c = JSON.parse(JSON.stringify(card));
+  return {
+    again: previewRate(c, 1),
+    hard:  previewRate(c, 2),
+    good:  previewRate(c, 3),
+    easy:  previewRate(c, 4),
+  };
+}
+
+function previewRate(card, rating) {
+  const now = Date.now();
+  if (card.state === 'new' || card.state === 'learning' || card.state === 'relearning') {
+    if (rating === 1) return LEARNING_STEPS[0] * 60000;
+    if (rating === 4) return 4 * 86400000;
+    const step = Math.min((card.learningStep || 0) + 1, LEARNING_STEPS.length - 1);
+    if (step >= LEARNING_STEPS.length - 1 && rating === 3) return 1 * 86400000;
+    return LEARNING_STEPS[step] * 60000;
+  } else {
+    if (rating === 1) return 10 * 60000;
+    if (rating === 2) return Math.max(1, Math.floor(card.interval * 1.2)) * 86400000;
+    if (rating === 3) return Math.max(1, Math.floor(card.interval * card.easeFactor)) * 86400000;
+    return Math.max(1, Math.floor(card.interval * card.easeFactor * 1.3)) * 86400000;
+  }
+}
+
+function scheduleCard(card, rating) {
+  const now = Date.now();
+  const isLearning = card.state === 'new' || card.state === 'learning' || card.state === 'relearning';
+
+  if (isLearning) {
+    if (rating === 1) {
+      card.state = card.state === 'new' ? 'learning' : card.state;
+      card.learningStep = 0;
+      card.due = now + LEARNING_STEPS[0] * 60000;
+    } else if (rating === 4) {
+      card.state = 'review';
+      card.interval = 4;
+      card.easeFactor = Math.min(card.easeFactor + 0.15, 2.5);
+      card.due = now + 4 * 86400000;
+    } else {
+      const step = Math.min((card.learningStep || 0) + 1, LEARNING_STEPS.length - 1);
+      if (step >= LEARNING_STEPS.length - 1 && rating === 3) {
+        // Graduate
+        const wasRelearning = card.state === 'relearning';
+        card.state = 'review';
+        card.interval = wasRelearning ? Math.max(1, Math.floor(card.interval * 0.5)) : 1;
+        card.due = now + card.interval * 86400000;
+      } else {
+        if (card.state === 'new') card.state = 'learning';
+        card.learningStep = step;
+        card.due = now + LEARNING_STEPS[step] * 60000;
+      }
+    }
+  } else {
+    if (rating === 1) {
+      card.lapses = (card.lapses || 0) + 1;
+      card.state = 'relearning';
+      card.learningStep = 0;
+      card.easeFactor = Math.max(card.easeFactor - 0.2, 1.3);
+      card.interval = Math.max(1, Math.floor(card.interval * 0.5));
+      card.due = now + 10 * 60000;
+    } else {
+      let newInterval;
+      if (rating === 2) {
+        newInterval = Math.max(card.interval + 1, Math.floor(card.interval * 1.2));
+        card.easeFactor = Math.max(card.easeFactor - 0.15, 1.3);
+      } else if (rating === 3) {
+        newInterval = Math.max(card.interval + 1, Math.floor(card.interval * card.easeFactor));
+      } else {
+        newInterval = Math.max(card.interval + 1, Math.floor(card.interval * card.easeFactor * 1.3));
+        card.easeFactor = Math.min(card.easeFactor + 0.15, 2.5);
+      }
+      // Fuzz ±5%
+      const fuzz = Math.floor((Math.random() - .5) * Math.max(1, newInterval * .1));
+      card.interval = Math.max(1, newInterval + fuzz);
+      card.due = now + card.interval * 86400000;
+      card.state = 'review';
+    }
+  }
+  card.repetitions = (card.repetitions || 0) + 1;
+  card.lastReviewed = now;
+  return card;
+}
+
+// ═══════════════════════════════════════════════
+//  STUDY SESSION STATE
+// ═══════════════════════════════════════════════
+
+let session = null;
+
+function buildQueue(deckId) {
+  const deck = db.decks.find(d => d.id === deckId);
+  const today = todayStr();
+  if (!db.dailyNew[deckId]) db.dailyNew[deckId] = {};
+  const newShownToday = db.dailyNew[deckId][today] || 0;
+  const newLimit = (deck.newPerDay || 20) - newShownToday;
+  const reviewLimit = deck.reviewPerDay || 200;
+  const now = Date.now();
+
+  const allCards = db.cards.filter(c => c.deckId === deckId);
+
+  // New cards (not yet started)
+  const newCards = allCards
+    .filter(c => c.state === 'new')
+    .slice(0, Math.max(0, newLimit));
+
+  // Due review/relearning cards
+  const dueCards = allCards
+    .filter(c => (c.state === 'review' || c.state === 'relearning') && c.due <= now)
+    .sort((a, b) => a.due - b.due)
+    .slice(0, reviewLimit);
+
+  // Learning cards due now or very soon
+  const learningCards = allCards
+    .filter(c => c.state === 'learning' && c.due <= now + 60000);
+
+  return [...learningCards, ...dueCards, ...newCards];
+}
+
+function startStudy(deckId) {
+  const queue = buildQueue(deckId);
+  if (queue.length === 0) {
+    alert('Ingen kort at repetere nu 🎉\nKom tilbage senere, eller juster daglige grænser i indstillinger.');
+    return;
+  }
+  session = {
+    deckId,
+    queue: [...queue],
+    idx: 0,
+    total: queue.length,
+    done: 0,
+    again: 0, hard: 0, good: 0, easy: 0,
+    flipped: false
+  };
+  showScreen('study', true);
+  renderStudyCard();
+}
+
+function renderStudyCard() {
+  const s = session;
+  if (!s || s.idx >= s.queue.length) {
+    // Check if there are more cards to show (learning cards coming due)
+    const remaining = db.cards.filter(c => c.deckId === s.deckId && c.state === 'learning');
+    showDone();
+    return;
+  }
+  const card = s.queue[s.idx];
+  const note = db.notes.find(n => n.id === card.noteId);
+  if (!note) { session.idx++; renderStudyCard(); return; }
+
+  // Update progress
+  const pct = (s.done / (s.done + s.queue.length - s.idx)) * 100;
+  document.getElementById('study-progress').style.width = pct + '%';
+  document.getElementById('study-num').textContent = s.done + '/' + (s.done + s.queue.length - s.idx);
+
+  // Set card content
+  document.getElementById('card-front-text').textContent = note.front;
+  document.getElementById('card-back-text').textContent = note.back;
+
+  // Reset flip state
+  s.flipped = false;
+  const wrap = document.getElementById('card-wrap');
+  wrap.classList.remove('flipping');
+  document.getElementById('card-front').style.display = '';
+  document.getElementById('card-back').classList.remove('visible');
+
+  // Hide ratings
+  document.getElementById('rating-area').classList.remove('visible');
+
+  // Preview intervals
+  const prev = previewIntervals(card);
+  document.getElementById('int-again').textContent = fmtInterval(prev.again);
+  document.getElementById('int-hard').textContent  = fmtInterval(prev.hard);
+  document.getElementById('int-good').textContent  = fmtInterval(prev.good);
+  document.getElementById('int-easy').textContent  = fmtInterval(prev.easy);
+
+  // Show card stage, hide done
+  document.getElementById('card-stage').style.display = '';
+  document.getElementById('study-done').style.display = 'none';
+  document.getElementById('rating-area').style.display = '';
+}
+
+function flipCard() {
+  if (session.flipped) return;
+  session.flipped = true;
+  const wrap = document.getElementById('card-wrap');
+  // Animate out
+  wrap.classList.add('flipping');
+  setTimeout(() => {
+    // Swap faces
+    document.getElementById('card-front').style.display = 'none';
+    document.getElementById('card-back').classList.add('visible');
+    // Animate back in
+    wrap.classList.remove('flipping');
+    // Show rating buttons
+    document.getElementById('rating-area').classList.add('visible');
+  }, 150);
+}
+
+function rate(rating) {
+  if (!session || !session.flipped) return;
+  const s = session;
+  const cardIdx = db.cards.findIndex(c => c.id === s.queue[s.idx].id);
+  if (cardIdx === -1) return;
+
+  const card = db.cards[cardIdx];
+  const prevState = card.state;
+  scheduleCard(card, rating);
+
+  // Track daily new
+  if (prevState === 'new') {
+    const today = todayStr();
+    if (!db.dailyNew[s.deckId]) db.dailyNew[s.deckId] = {};
+    db.dailyNew[s.deckId][today] = (db.dailyNew[s.deckId][today] || 0) + 1;
+  }
+
+  // Track review stats
+  db.reviews.push({ id: uid(), cardId: card.id, timestamp: Date.now(), rating, interval: card.interval });
+  if (db.reviews.length > 10000) db.reviews = db.reviews.slice(-10000);
+
+  // Session stats
+  if (rating === 1) s.again++;
+  else if (rating === 2) s.hard++;
+  else if (rating === 3) s.good++;
+  else s.easy++;
+
+  // If card is still learning (Again/Hard), re-insert later in queue
+  if (card.state === 'learning' || card.state === 'relearning') {
+    const laterIdx = Math.min(s.idx + 3, s.queue.length);
+    s.queue.splice(laterIdx, 0, { ...card });
+  }
+
+  s.done++;
+  s.idx++;
+
+  saveDB();
+  renderStudyCard();
+}
+
+function showDone() {
+  document.getElementById('card-stage').style.display = 'none';
+  document.getElementById('rating-area').style.display = 'none';
+  const el = document.getElementById('study-done');
+  el.style.display = 'flex';
+  document.getElementById('study-progress').style.width = '100%';
+  document.getElementById('study-num').textContent = session.done + '/' + session.done;
+
+  const s = session;
+  document.getElementById('session-stats').innerHTML = `
+    <div class="session-stat"><div class="n" style="color:var(--again)">${s.again}</div><div class="l">Igen</div></div>
+    <div class="session-stat"><div class="n" style="color:var(--hard)">${s.hard}</div><div class="l">Svær</div></div>
+    <div class="session-stat"><div class="n" style="color:var(--good)">${s.good}</div><div class="l">God</div></div>
+    <div class="session-stat"><div class="n" style="color:var(--easy)">${s.easy}</div><div class="l">Let</div></div>
+  `;
+}
+
+function exitStudy() {
+  session = null;
+  showScreen('decks');
+  renderDecks();
+}
+
+// ═══════════════════════════════════════════════
+//  DECK COUNTS
+// ═══════════════════════════════════════════════
+
+function getDeckCounts(deckId) {
+  const today = todayStr();
+  const deck = db.decks.find(d => d.id === deckId);
+  const now = Date.now();
+  const newShownToday = (db.dailyNew[deckId] || {})[today] || 0;
+  const newLimit = Math.max(0, (deck?.newPerDay || 20) - newShownToday);
+  const cards = db.cards.filter(c => c.deckId === deckId);
+  const newCount = Math.min(newLimit, cards.filter(c => c.state === 'new').length);
+  const lrnCount = cards.filter(c => c.state === 'learning' && c.due <= now + 60000).length;
+  const dueCount = cards.filter(c => (c.state === 'review' || c.state === 'relearning') && c.due <= now).length;
+  return { newCount, lrnCount, dueCount };
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER FUNCTIONS
+// ═══════════════════════════════════════════════
+
+function renderDecks() {
+  const el = document.getElementById('deck-list');
+  if (db.decks.length === 0) {
+    el.innerHTML = `<div class="empty"><span class="emoji">📭</span>Ingen decks endnu.<br>Tryk + for at oprette et nyt deck.</div>`;
+    return;
+  }
+  el.innerHTML = db.decks.map(deck => {
+    const { newCount, lrnCount, dueCount } = getDeckCounts(deck.id);
+    const total = newCount + lrnCount + dueCount;
+    return `
+      <div class="deck-item" onclick="startStudy('${deck.id}')">
+        <div class="deck-info">
+          <div class="deck-name">${esc(deck.name)}</div>
+          <div class="deck-counts">
+            <span class="c-new">${newCount}</span>
+            <span class="c-lrn">${lrnCount}</span>
+            <span class="c-due">${dueCount}</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="deck-study-btn" onclick="event.stopPropagation();startStudy('${deck.id}')">
+            ${total > 0 ? 'Studér' : 'Gennemgå'}
+          </button>
+          <button class="icon-btn" onclick="event.stopPropagation();showDeckMenu(event,'${deck.id}')" style="width:32px;height:32px;font-size:18px;background:none;border:none;color:var(--txt2)">⋯</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+let activeMenu = null;
+function showDeckMenu(e, deckId) {
+  if (activeMenu) { activeMenu.remove(); activeMenu = null; }
+  const menu = document.createElement('div');
+  menu.className = 'deck-menu';
+  menu.innerHTML = `
+    <div class="deck-menu-item" onclick="openAddCardModal('${deckId}')">✏️ Tilføj kort</div>
+    <div class="deck-menu-item" onclick="editDeck('${deckId}')">⚙️ Indstillinger</div>
+    <div class="deck-menu-item danger" onclick="deleteDeck('${deckId}')">🗑 Slet deck</div>
+  `;
+  const btn = e.currentTarget;
+  btn.style.position = 'relative';
+  btn.appendChild(menu);
+  activeMenu = menu;
+  setTimeout(() => document.addEventListener('click', () => { if(activeMenu) { activeMenu.remove(); activeMenu=null; } }, { once: true }), 10);
+}
+
+function renderBrowse() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const el = document.getElementById('card-list');
+  const cards = db.cards.filter(c => {
+    const note = db.notes.find(n => n.id === c.noteId);
+    if (!note) return false;
+    if (!q) return true;
+    return note.front.toLowerCase().includes(q) || note.back.toLowerCase().includes(q) || (note.tags||[]).join(' ').toLowerCase().includes(q);
+  });
+  if (cards.length === 0) {
+    el.innerHTML = `<div class="empty"><span class="emoji">🔍</span>Ingen kort matcher søgningen.</div>`;
+    return;
+  }
+  el.innerHTML = cards.slice(0, 200).map(card => {
+    const note = db.notes.find(n => n.id === card.noteId);
+    if (!note) return '';
+    const deck = db.decks.find(d => d.id === card.deckId);
+    const stateLabel = {new:'Ny',learning:'Lær',review:'Review',relearning:'Genlær'}[card.state] || card.state;
+    return `
+      <div class="card-row" onclick="openEditCardModal('${note.id}')">
+        <div class="card-row-front">${esc(note.front)}</div>
+        <div class="card-row-back">${esc(note.back)}</div>
+        <div class="card-row-meta">
+          <span class="state-badge state-${card.state}">${stateLabel}</span>
+          <span class="deck-badge">${esc(deck?.name || '')}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderStats() {
+  const now = Date.now();
+  const today = todayStr();
+  const todayStart = new Date(today).getTime();
+  const reviewsToday = db.reviews.filter(r => r.timestamp >= todayStart).length;
+
+  // Streak
+  let streak = 0;
+  let d = new Date(); d.setHours(0,0,0,0);
+  while (true) {
+    const s = d.toISOString().slice(0,10);
+    const had = db.reviews.some(r => r.timestamp >= d.getTime() && r.timestamp < d.getTime() + 86400000);
+    if (!had) break;
+    streak++;
+    d.setDate(d.getDate() - 1);
+  }
+
+  const totalCards = db.cards.length;
+  const matureCards = db.cards.filter(c => c.state === 'review' && c.interval >= 21).length;
+
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card"><div class="stat-value">${reviewsToday}</div><div class="stat-label">Kort i dag</div></div>
+    <div class="stat-card"><div class="stat-value">${streak}</div><div class="stat-label">Dages streak</div></div>
+    <div class="stat-card"><div class="stat-value">${totalCards}</div><div class="stat-label">Kort i alt</div></div>
+    <div class="stat-card"><div class="stat-value">${matureCards}</div><div class="stat-label">Modne kort</div></div>
+    <div class="stat-card"><div class="stat-value">${db.reviews.length}</div><div class="stat-label">Totale reviews</div></div>
+    <div class="stat-card"><div class="stat-value">${db.decks.length}</div><div class="stat-label">Decks</div></div>
+  `;
+
+  // Forecast
+  const forecast = [];
+  for (let i = 0; i < 7; i++) {
+    const dayStart = now + i * 86400000;
+    const dayEnd = dayStart + 86400000;
+    const count = db.cards.filter(c => c.due >= dayStart && c.due < dayEnd && (c.state === 'review' || c.state === 'relearning')).length;
+    forecast.push(count);
+  }
+  const maxFc = Math.max(...forecast, 1);
+  const days = ['i dag','i morgen','om 2d','om 3d','om 4d','om 5d','om 6d'];
+  const barsEl = document.getElementById('forecast-bars');
+  barsEl.innerHTML = forecast.map((n, i) => `
+    <div class="bar-col">
+      <div class="bar-fill" style="height:${Math.round((n/maxFc)*80)+4}px" title="${n} kort"></div>
+      <div class="bar-label">${days[i]}</div>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════
+
+function showScreen(name, noNav) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  if (!noNav) {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.screen === name));
+  }
+  // Render on show
+  if (name === 'decks')  renderDecks();
+  if (name === 'browse') renderBrowse();
+  if (name === 'stats')  renderStats();
+}
+
+// ═══════════════════════════════════════════════
+//  MODALS
+// ═══════════════════════════════════════════════
+
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// Close on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('open');
+  });
+});
+
+// Deck modal
+function openAddDeckModal() {
+  editingDeckId = null;
+  document.getElementById('deck-modal-title').textContent = 'Nyt deck';
+  document.getElementById('deck-name-input').value = '';
+  document.getElementById('deck-new-input').value = 20;
+  document.getElementById('deck-rev-input').value = 200;
+  openModal('modal-deck');
+}
+
+function editDeck(deckId) {
+  editingDeckId = deckId;
+  const deck = db.decks.find(d => d.id === deckId);
+  document.getElementById('deck-modal-title').textContent = 'Redigér deck';
+  document.getElementById('deck-name-input').value = deck.name;
+  document.getElementById('deck-new-input').value = deck.newPerDay || 20;
+  document.getElementById('deck-rev-input').value = deck.reviewPerDay || 200;
+  openModal('modal-deck');
+}
+
+function saveDeck() {
+  const name = document.getElementById('deck-name-input').value.trim();
+  if (!name) { alert('Angiv et navn for decket.'); return; }
+  const newPerDay = parseInt(document.getElementById('deck-new-input').value) || 20;
+  const reviewPerDay = parseInt(document.getElementById('deck-rev-input').value) || 200;
+
+  if (editingDeckId) {
+    const deck = db.decks.find(d => d.id === editingDeckId);
+    if (deck) { deck.name = name; deck.newPerDay = newPerDay; deck.reviewPerDay = reviewPerDay; }
+  } else {
+    db.decks.push({ id: uid(), name, newPerDay, reviewPerDay });
+  }
+  saveDB();
+  closeModal('modal-deck');
+  renderDecks();
+}
+
+function deleteDeck(deckId) {
+  if (!confirm('Slet deck og alle tilhørende kort? Dette kan ikke fortrydes.')) return;
+  db.decks = db.decks.filter(d => d.id !== deckId);
+  db.notes = db.notes.filter(n => n.deckId !== deckId);
+  db.cards = db.cards.filter(c => c.deckId !== deckId);
+  saveDB();
+  renderDecks();
+}
+
+// Card modal
+function populateDeckSelect(selectId, selectedId) {
+  const sel = document.getElementById(selectId);
+  sel.innerHTML = db.decks.map(d => `<option value="${d.id}"${d.id === selectedId ? ' selected' : ''}>${esc(d.name)}</option>`).join('');
+}
+
+function openAddCardModal(deckId) {
+  if (activeMenu) { activeMenu.remove(); activeMenu = null; }
+  editingNoteId = null;
+  document.getElementById('card-modal-title').textContent = 'Nyt kort';
+  document.getElementById('card-front-input').value = '';
+  document.getElementById('card-back-input').value = '';
+  document.getElementById('card-tags-input').value = '';
+  document.getElementById('delete-card-btn').style.display = 'none';
+  populateDeckSelect('card-deck-select', deckId || (db.decks[0] || {}).id);
+  openModal('modal-card');
+}
+
+function openEditCardModal(noteId) {
+  editingNoteId = noteId;
+  const note = db.notes.find(n => n.id === noteId);
+  if (!note) return;
+  document.getElementById('card-modal-title').textContent = 'Redigér kort';
+  document.getElementById('card-front-input').value = note.front;
+  document.getElementById('card-back-input').value = note.back;
+  document.getElementById('card-tags-input').value = (note.tags || []).join(', ');
+  document.getElementById('delete-card-btn').style.display = '';
+  populateDeckSelect('card-deck-select', note.deckId);
+  openModal('modal-card');
+}
+
+function saveCard() {
+  const front = document.getElementById('card-front-input').value.trim();
+  const back  = document.getElementById('card-back-input').value.trim();
+  const tags  = document.getElementById('card-tags-input').value.split(',').map(t => t.trim()).filter(Boolean);
+  const deckId = document.getElementById('card-deck-select').value;
+  if (!front || !back) { alert('Udfyld både spørgsmål og svar.'); return; }
+
+  if (editingNoteId) {
+    const note = db.notes.find(n => n.id === editingNoteId);
+    if (note) { note.front = front; note.back = back; note.tags = tags; note.deckId = deckId;
+      // Update card deckId too
+      const card = db.cards.find(c => c.noteId === editingNoteId);
+      if (card) card.deckId = deckId;
+    }
+  } else {
+    const noteId = uid();
+    db.notes.push({ id: noteId, deckId, front, back, tags, created: Date.now() });
+    db.cards.push({ id: uid(), noteId, deckId, state: 'new', due: Date.now(), interval: 0, easeFactor: 2.5, repetitions: 0, learningStep: 0, lapses: 0, lastReviewed: null });
+  }
+  saveDB();
+  closeModal('modal-card');
+  renderDecks();
+  renderBrowse();
+}
+
+function deleteCard() {
+  if (!editingNoteId) return;
+  if (!confirm('Slet dette kort?')) return;
+  db.notes = db.notes.filter(n => n.id !== editingNoteId);
+  db.cards = db.cards.filter(c => c.noteId !== editingNoteId);
+  saveDB();
+  closeModal('modal-card');
+  renderBrowse();
+}
+
+// Import modal
+function openImportModal() {
+  populateDeckSelect('import-deck-select', (db.decks[0] || {}).id);
+  document.getElementById('tsv-paste').value = '';
+  document.getElementById('import-area').innerHTML = '📂 Tryk her for at vælge .tsv eller .txt fil<input type="file" id="tsv-file" accept=".tsv,.txt,.csv" style="display:none" onchange="handleFileImport(event)">';
+  openModal('modal-import');
+}
+
+function handleFileImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('tsv-paste').value = e.target.result;
+    document.getElementById('import-area').innerHTML = '✅ ' + esc(file.name) + ' indlæst';
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function doImport() {
+  const raw = document.getElementById('tsv-paste').value.trim();
+  if (!raw) { alert('Ingen data at importere.'); return; }
+  const deckId = document.getElementById('import-deck-select').value;
+  const lines = raw.split('\n').filter(l => l.trim());
+  let count = 0;
+  lines.forEach(line => {
+    const parts = line.split('\t');
+    let front, back;
+    if (parts.length >= 3) {
+      // Format: nr | front | back
+      front = parts[1]?.trim();
+      back  = parts[2]?.trim();
+    } else if (parts.length === 2) {
+      front = parts[0]?.trim();
+      back  = parts[1]?.trim();
+    }
+    if (!front || !back) return;
+    const noteId = uid();
+    db.notes.push({ id: noteId, deckId, front, back, tags: [], created: Date.now() });
+    db.cards.push({ id: uid(), noteId, deckId, state: 'new', due: Date.now(), interval: 0, easeFactor: 2.5, repetitions: 0, learningStep: 0, lapses: 0, lastReviewed: null });
+    count++;
+  });
+  saveDB();
+  closeModal('modal-import');
+  renderDecks();
+  alert(`✅ ${count} kort importeret!`);
+}
+
+// ═══════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════
+
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── PWA / ICON SETUP ──
+(function setupPWA() {
+  // SVG logo: 3 stacked books in brand colours
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<rect width="512" height="512" rx="110" fill="#0f0f14"/>
+<rect x="72" y="318" width="368" height="66" rx="13" fill="#252048"/>
+<rect x="72" y="318" width="34" height="66" rx="11" fill="#1a163a"/>
+<rect x="88" y="252" width="336" height="66" rx="13" fill="#4a3f9e"/>
+<rect x="88" y="252" width="34" height="66" rx="11" fill="#382f80"/>
+<rect x="104" y="186" width="304" height="66" rx="13" fill="#7c6fff"/>
+<rect x="104" y="186" width="34" height="66" rx="11" fill="#6858e0"/>
+<rect x="158" y="205" width="196" height="9" rx="4" fill="rgba(255,255,255,0.42)"/>
+<rect x="158" y="222" width="148" height="9" rx="4" fill="rgba(255,255,255,0.26)"/>
+<rect x="158" y="239" width="172" height="9" rx="4" fill="rgba(255,255,255,0.14)"/>
+</svg>`;
+
+  // Favicon (SVG)
+  const svgUri = 'data:image/svg+xml,' + encodeURIComponent(svg);
+  const fav = document.createElement('link');
+  fav.rel = 'icon'; fav.type = 'image/svg+xml'; fav.href = svgUri;
+  document.head.appendChild(fav);
+
+  // Apple Touch Icon – render SVG → canvas → PNG
+  const img = new Image();
+  img.onload = () => {
+    const canvas = Object.assign(document.createElement('canvas'), { width: 180, height: 180 });
+    canvas.getContext('2d').drawImage(img, 0, 0, 180, 180);
+    const al = document.createElement('link');
+    al.rel = 'apple-touch-icon';
+    al.href = canvas.toDataURL('image/png');
+    document.head.appendChild(al);
+  };
+  img.src = svgUri;
+
+  // Web App Manifest (so Android/Chrome shows install prompt)
+  try {
+    const manifest = {
+      name: 'FlashDeck',
+      short_name: 'FlashDeck',
+      description: 'Spaced repetition flashcards',
+      start_url: '.',
+      display: 'standalone',
+      background_color: '#0f0f14',
+      theme_color: '#7c6fff',
+      orientation: 'portrait-primary'
+    };
+    const ml = document.createElement('link');
+    ml.rel = 'manifest';
+    ml.href = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/json' }));
+    document.head.appendChild(ml);
+  } catch(e) {}
+})();
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (session && session.flipped) {
+    if (e.key === '1') rate(1);
+    if (e.key === '2') rate(2);
+    if (e.key === '3') rate(3);
+    if (e.key === '4') rate(4);
+  }
+  if (session && !session.flipped && (e.key === ' ' || e.key === 'Enter')) {
+    flipCard();
+  }
+});
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+
+renderDecks();
+</script>
+</body>
+</html>
